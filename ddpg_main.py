@@ -56,8 +56,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
     summaries_collector = SummariesCollector(summaries_dir, model_name)
     episode_runner = EpisodeRunner(config, env_generator.get_env_wrapper().get_env(), network_manager)
     visualization_episode_runner = EpisodeRunner(
-    #    config, env_generator.get_env_wrapper().get_env(), network_manager, is_in_collab=is_in_collab)
-        config, env_generator.get_env_wrapper().get_env(), network_manager, is_in_collab=True)
+        config, env_generator.get_env_wrapper().get_env(), network_manager, is_in_collab=is_in_collab)
 
     test_results = []
 

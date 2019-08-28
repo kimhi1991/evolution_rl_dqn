@@ -10,13 +10,13 @@ class EpisodeRunner:
         self.config = config
         self.gym_env = gym_env
         self.networks_manager = networks_manager
-
+        self.epsilon = self.config['model']['epsilon']
         self.is_in_collab = is_in_collab
         if self.is_in_collab:
             from pyvirtualdisplay import Display
             display = Display(visible=0, size=(400, 300))
             display.start()
-
+    """
     def _get_sampled_action(self, action):
         totally_random = np.random.binomial(1, self.config['model']['random_action_probability'], 1)[0]
         if totally_random:
@@ -30,6 +30,7 @@ class EpisodeRunner:
         #result = np.maximum(result, action_space.low)
         #result = np.minimum(result, action_space.high)
         return result
+    """
 
     def _render(self, render):
         if render:
@@ -59,6 +60,9 @@ class EpisodeRunner:
             #choose the best action w.r.t q-value
             predicted_actions = self.networks_manager.predict_action(
                 [states[-1]], sess, use_online_network=True, ids=[actor_id])[actor_id]
+            #for decay gridic epsilon
+            if (self.epsilon  >= self.config['model']['epsilon_min']):
+                self.epsilon *= self.config['model']['epsilon_decay']
             prob_exploration = np.random.binomial(1, self.config['model']['random_action_probability'], 1)[0]
             if (prob_exploration == 0):
                 chosen_action = np.argmax(predicted_actions)
