@@ -1,7 +1,7 @@
 general:
   name:
-#  gym_continuous_env: 'Pendulum-v0'
-#  gym_continuous_env: 'MountainCarContinuous-v0'
+
+  #------change to discrit
   gym_continuous_env: 'LunarLander-v2'
   random_seed: 123
 #  random_seed: 456

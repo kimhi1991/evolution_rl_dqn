@@ -12,8 +12,9 @@ actor:
 #  tanh_preactivation_loss_coefficient: 0.0
 
 critic:
-  learning_rate: 0.005
-#  learning_rate: 0.01
+  learning_rate: 0.00025
+  #learning_rate: 0.005
+  #learning_rate: 0.01
   gradient_limit: 1.0
 #  gradient_limit: 0.0
   layers_before_action: [50, 50]

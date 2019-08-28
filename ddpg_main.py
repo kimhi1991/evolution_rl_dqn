@@ -56,7 +56,8 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
     summaries_collector = SummariesCollector(summaries_dir, model_name)
     episode_runner = EpisodeRunner(config, env_generator.get_env_wrapper().get_env(), network_manager)
     visualization_episode_runner = EpisodeRunner(
-        config, env_generator.get_env_wrapper().get_env(), network_manager, is_in_collab=is_in_collab)
+    #    config, env_generator.get_env_wrapper().get_env(), network_manager, is_in_collab=is_in_collab)
+        config, env_generator.get_env_wrapper().get_env(), network_manager, is_in_collab=True)
 
     test_results = []
 
@@ -150,8 +151,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
                 episode_rewards.append(sum(rewards))
                 episode_lengths.append(len(rewards))
 
-            print( 'rollout time took: {}'.format(total_rollout_time))
-            print(rewards[-1])
+            print( 'rollout time took: {}'.format(total_rollout_time) + 'last reward: {}'.format(rewards[-1]))
 
             # do updates
             if replay_buffer.size() > config['model']['batch_size']:
