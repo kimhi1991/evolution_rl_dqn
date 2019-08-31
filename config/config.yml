@@ -8,9 +8,9 @@ general:
 #  random_seed: 789
   updates_cycle_count: 10000
   episodes_per_update: 16
-#  model_updates_per_cycle: 40
-  #model_updates_per_cycle: 400
-  model_updates_per_cycle: 200
+  #model_updates_per_cycle: 40
+  model_updates_per_cycle: 400
+  #model_updates_per_cycle: 100
   max_path_slack: 1.5
   gpu_usage: 0.9
   actor_gpu_usage: 0.9
@@ -27,9 +27,9 @@ model:
   gamma: 0.99
   random_action_probability: 0.2
   #for decay gridic epsilon
-  #epsilon=0.8
-  #epsilon_min=0.01
-  #epsilon_decay=0.995
+  epsilon: 0.5
+  epsilon_min: 0.05
+  epsilon_decay: 0.99
   #random_noise_std: 0.05
 
 test:

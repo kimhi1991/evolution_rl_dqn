@@ -33,6 +33,7 @@ class Network(object):
             )
 
             online_critic_params = tf.trainable_variables()[variable_count:]
+            self.online_critic_params =online_critic_params
             variable_count = len(tf.compat.v1.trainable_variables())
 
             # target network 1
@@ -77,6 +78,8 @@ class Network(object):
             self.critic_optimization_summaries = tf.summary.merge([
                 #tf.summary.scalar('critic_regularization_loss', critic_regularization_loss),
                 tf.summary.scalar('critic_total_loss', self.critic_total_loss),
+                #tf.summary.scalar('scalar lable', self.scalar_label),
+                #tf.summary.scalar('Q valuse', self.online_q_value),
                 #tf.summary.scalar('critic_gradients_norm_initial', self.critic_initial_gradients_norm),
                 #tf.summary.scalar('critic_gradients_norm_clipped', self.critic_clipped_gradients_norm),
                 #tf.summary.scalar('critic_mean_prediction', tf.reduce_mean(self.online_q_value_fixed_action)),
@@ -144,8 +147,8 @@ class Network(object):
             return q_val
 
 
-    def get_actor_online_weights(self, sess):
-        return sess.run(self.online_actor_params)
+    def get_critic_online_weights(self, sess):
+        return sess.run(self.online_critic_params)
 
     def set_actor_online_weights(self, sess, weights):
         feed = {

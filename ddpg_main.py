@@ -125,6 +125,11 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
             )
     ) as sess:
         sess.run(tf.global_variables_initializer())
+
+        #
+        a=network_manager.networks[0].get_critic_online_weights(sess)
+        #
+
         #close because of double dqn
         network_manager.update_target_networks(sess)
 
