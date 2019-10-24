@@ -13,23 +13,26 @@ general:
   #model_updates_per_cycle: 100
   max_path_slack: 1.5
   gpu_usage: 0.9
-  actor_gpu_usage: 0.9
+  actor_gpu_usage: 0.1
 #  actor_processes: 2
   actor_processes: 6
   write_train_summaries: 500
   save_model_every_cycles: 100
-  max_steps: 300
+  max_steps: 1000
+  #max_steps: 300
 
 model:
   buffer_size: 1000000
-#  batch_size: 128
+
+  #batch_size: 128
   batch_size: 512
   gamma: 0.99
-  random_action_probability: 0.2
+  random_action_probability: 0.3
   #for decay gridic epsilon
-  epsilon: 0.5
-  epsilon_min: 0.05
-  epsilon_decay: 0.99
+  epsilon: 0.85
+  epsilon_min: 0.25
+  #epsilon_decay: 0.99999
+  epsilon_decay: 0.999999
   #random_noise_std: 0.05
 
 test:

@@ -11,6 +11,7 @@ class EpisodeRunner:
         self.gym_env = gym_env
         self.networks_manager = networks_manager
         self.epsilon = self.config['model']['epsilon']
+        #self.time =0
         self.is_in_collab = is_in_collab
         if self.is_in_collab:
             from pyvirtualdisplay import Display
@@ -56,14 +57,22 @@ class EpisodeRunner:
         # set the start state
         start_rollout_time = datetime.datetime.now()
         max_steps = self.config['general']['max_steps']
+        #self.time += 1
+
+        if (is_train == True):
+            if (self.epsilon >= self.config['model']['epsilon_min']):  # and self.time > 10):
+                self.epsilon *= self.config['model']['epsilon_decay']
+            #print(self.epsilon)
+
+
         for j in range(max_steps):
             #choose the best action w.r.t q-value
             predicted_actions = self.networks_manager.predict_action(
                 [states[-1]], sess, use_online_network=True, ids=[actor_id])[actor_id]
-            #for decay gridic epsilon
-            if (self.epsilon  >= self.config['model']['epsilon_min']):
-                self.epsilon *= self.config['model']['epsilon_decay']
-            prob_exploration = np.random.binomial(1, self.config['model']['random_action_probability'], 1)[0]
+
+            prob_exploration = np.random.binomial(1, self.epsilon, 1)[0]
+            if (is_train == False):
+                prob_exploration = 0
             if (prob_exploration == 0):
                 chosen_action = np.argmax(predicted_actions)
             else:

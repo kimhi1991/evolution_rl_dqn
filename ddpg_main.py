@@ -64,6 +64,8 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
     def update_model(sess):
         batch_size = config['model']['batch_size']
         gamma = config['model']['gamma']
+
+        #NOTE: we neet the check that approach and the diffrent batch for each network
         current_state, action, reward, terminated, next_state = replay_buffer.sample_batch(batch_size)
 
 
@@ -71,9 +73,18 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
         #network_manager.runing_network == 1 - network_manager.runing_network
         next_state_action_target_q = network_manager.predict_policy_q(next_state, sess, use_online_network=False)
 
+        #calc actions from online net only for ddqn
+        #next_state_action_online_q = network_manager.predict_policy_q(next_state, sess, use_online_network=True)
+        #selected_actions=[]
+        #for i in range(batch_size):
+        #    selected_action = np.argmax(next_state_action_online_q[0][i])
+        #    selected_actions.append(selected_action)
+
         # compute critic label
         q_label = {}
 
+
+        #NOTE: in case we want to remove ddqn, just change the selected_actions below to action
         one_hot_vector = []
         for i in range(batch_size):
             c= np.zeros(4)
@@ -86,14 +97,12 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
             d[action[i]] = reward[i]
             reward_batch =np.concatenate((reward_batch,d),axis=0)
         reward_batch=np.reshape(reward_batch,( batch_size,-1))
-
-
-
-
-
         terminated = [terminated,terminated,terminated,terminated]
         terminated= np.transpose(terminated)
 
+
+
+        #Belman equation
         for network_id in next_state_action_target_q:
             q_label[network_id] = \
                 np.expand_dims(np.array(reward_batch) +
@@ -111,7 +120,6 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
 
 
         # update target networks
-        # close because of double dqn
         network_manager.update_target_networks(sess)
         result = list(critic_optimization_summaries.values()) #+ list(actor_optimization_summaries.values())
         return result
@@ -125,13 +133,8 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
             )
     ) as sess:
         sess.run(tf.global_variables_initializer())
-
-        #
-        a=network_manager.networks[0].get_critic_online_weights(sess)
-        #
-
-        #close because of double dqn
-        network_manager.update_target_networks(sess)
+        # CHECK IF NEEDED-- UPDATE TARGET NET TWICE
+        #network_manager.update_target_networks(sess)
 
         global_step = 0
         total_episodes = 0
@@ -155,7 +158,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
                 episode_rewards.append(sum(rewards))
                 episode_lengths.append(len(rewards))
 
-            print( 'rollout time took: {}'.format(total_rollout_time) + 'last reward: {}'.format(rewards[-1]))
+            print( 'rollout time took: {}'.format(total_rollout_time))# + 'last reward: {}'.format(rewards[-1]))
 
             # do updates
             if replay_buffer.size() > config['model']['batch_size']:
@@ -179,8 +182,9 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
                 actor_stats = {}
                 for actor_id in network_manager.ids:
                     episode_rewards, episode_lengths = [], []
-                    for _ in range(number_of_episodes_per_actor):
-                        states, actions, rewards, done, rollout_time = episode_runner.run_episode(sess, actor_id, False)
+                    for i in range(number_of_episodes_per_actor):
+                        cond =int( i / number_of_episodes_per_actor - 1)
+                        states, actions, rewards, done, rollout_time = episode_runner.run_episode(sess, actor_id, False, cond)
                         # at the end of episode
                         episode_rewards.append(sum(rewards))
                         episode_lengths.append(len(rewards))
