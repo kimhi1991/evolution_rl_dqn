@@ -61,6 +61,10 @@ class NetworksManager:
         summaries_results = execution_result[:self.config['evolution']['population']]
         return self._arrange_by_ids(summaries_results)
 
+
+
+
+    #CHECK WITH TOM (episode_runner)
     def predict_action(self, state_inputs, sess, use_online_network, ids=None):
         feed_dictionary = self._generate_feed_dictionary(state_inputs)
         if ids is None:
@@ -72,12 +76,14 @@ class NetworksManager:
             #if (self.runing_network == 1): #for double dqn
                 action_prediction.append(self.networks[network_id].online_q_value)
 
-
             else:
                 action_prediction.append(self.networks[network_id].target_q_value)
 
         action_results = sess.run(action_prediction, feed_dictionary)
         return self._arrange_by_ids(action_results, ids)
+
+
+
 
     def update_target_networks(self, sess):
         critic_updates = [self.networks[network_id].update_critic_target_params for network_id in self.ids]
@@ -92,13 +98,12 @@ class NetworksManager:
                 feed_dictionary[self.networks[network_id].scalar_label] = scalar_inputs[network_id]
         return feed_dictionary
 
-
+    #CHECK WITH TOM(ddpg_main)
     def predict_policy_q(self, state_inputs, sess, use_online_network):
         feed_dictionary = self._generate_feed_dictionary(state_inputs)
         q_values = []
         for network_id in self.ids:
             if use_online_network:
-            #if (self.runing_network == 1):#for double dqn
                 q_values.append(self.networks[network_id].online_q_value)
             else:
                 q_values.append(self.networks[network_id].target_q_value)

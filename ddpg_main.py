@@ -124,8 +124,14 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
         result = list(critic_optimization_summaries.values()) #+ list(actor_optimization_summaries.values())
         return result
 
+
+
+
     def compute_actor_score(episode_rewards, episode_lengths):
         return sum(episode_rewards)
+
+
+
 
     with tf.Session(
             config=tf.ConfigProto(

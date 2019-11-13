@@ -68,7 +68,11 @@ class EpisodeRunner:
         for j in range(max_steps):
             #choose the best action w.r.t q-value
             predicted_actions = self.networks_manager.predict_action(
-                [states[-1]], sess, use_online_network=True, ids=[actor_id])[actor_id]
+               [states[-1]], sess, use_online_network=True, ids=[actor_id])[actor_id]
+
+            #predicted_actions = q_label[actor_id]
+
+            #print(predicted_actions )
 
             prob_exploration = np.random.binomial(1, self.epsilon, 1)[0]
             if (is_train == False):
@@ -76,7 +80,8 @@ class EpisodeRunner:
             if (prob_exploration == 0):
                 chosen_action = np.argmax(predicted_actions)
             else:
-                chosen_action=randrange(4)
+                chosen_action=randrange(2)
+                #TODO-fix generic
 
             next_state, reward, done, _ = self.gym_env.step(chosen_action)
             next_state = np.squeeze(next_state)
