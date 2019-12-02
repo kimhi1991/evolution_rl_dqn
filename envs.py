@@ -14,10 +14,11 @@ class BaseEnv:
     def get_state_space_dim(self):
         return self.get_env().observation_space.shape[0]
 
+
     def get_action_space_dim(self):
         #return 0
-        return self.get_env().action_space.shape[0]
-
+        #return self.get_env().action_space.shape[0]
+        return self.get_env().action_space.n
 
 
 class EnvGenerator:

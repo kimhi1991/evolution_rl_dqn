@@ -3,6 +3,11 @@ import time
 import numpy as np
 import datetime
 from random import randrange
+import os
+import yaml
+
+with open(os.path.join(os.getcwd(), 'config/config.yml'), 'r') as yml_file:
+    config = yaml.load(yml_file)
 
 
 class EpisodeRunner:
@@ -17,21 +22,7 @@ class EpisodeRunner:
             from pyvirtualdisplay import Display
             display = Display(visible=0, size=(400, 300))
             display.start()
-    """
-    def _get_sampled_action(self, action):
-        totally_random = np.random.binomial(1, self.config['model']['random_action_probability'], 1)[0]
-        if totally_random:
-            # take a completely random action
-            result = np.random.uniform(-1.0, 1.0, np.shape(action))
-        else:
-            # modify existing step
-            result = action + np.random.normal(0.0, self.config['model']['random_noise_std'], np.shape(action))
-        #action_space = self.gym_env.action_space
-        # clip the action
-        #result = np.maximum(result, action_space.low)
-        #result = np.minimum(result, action_space.high)
-        return result
-    """
+
 
     def _render(self, render):
         if render:
@@ -54,34 +45,28 @@ class EpisodeRunner:
         actions = []
         rewards = []
         done = False
+
         # set the start state
         start_rollout_time = datetime.datetime.now()
         max_steps = self.config['general']['max_steps']
-        #self.time += 1
 
+        #exploration in train
         if (is_train == True):
             if (self.epsilon >= self.config['model']['epsilon_min']):  # and self.time > 10):
                 self.epsilon *= self.config['model']['epsilon_decay']
-            #print(self.epsilon)
-
-
+            else:
+                self.epsilon = self.config['model']['epsilon_min']
+        #print(self.epsilon)
         for j in range(max_steps):
             #choose the best action w.r.t q-value
             predicted_actions = self.networks_manager.predict_action(
                [states[-1]], sess, use_online_network=True, ids=[actor_id])[actor_id]
 
-            #predicted_actions = q_label[actor_id]
-
-            #print(predicted_actions )
-
             prob_exploration = np.random.binomial(1, self.epsilon, 1)[0]
-            if (is_train == False):
-                prob_exploration = 0
-            if (prob_exploration == 0):
-                chosen_action = np.argmax(predicted_actions)
+            if (self.epsilon  > 0. and np.random.uniform()< self.epsilon and is_train == True):
+                chosen_action = np.random.choice(config['general']['action_dim'])
             else:
-                chosen_action=randrange(2)
-                #TODO-fix generic
+                chosen_action = np.argmax(predicted_actions)
 
             next_state, reward, done, _ = self.gym_env.step(chosen_action)
             next_state = np.squeeze(next_state)

@@ -14,7 +14,6 @@ class NetworksManager:
 
         # generate inputs
         self.state_inputs = tf.compat.v1.placeholder(tf.float32, (None, self.state_dimension), name='state_inputs')
-
         inputs= self.state_inputs
         self.networks = {
             i: Network(
@@ -25,9 +24,6 @@ class NetworksManager:
         self.ids = list(self.networks.keys())
         self.scores = [0.0 for _ in self.ids]
 
-        #only for double dqn
-        #self.runing_network = 1
-
 
     def _arrange_by_ids(self, ordered_collection, ids=None):
         if ids is None:
@@ -36,7 +32,6 @@ class NetworksManager:
 
     def set_scores(self, new_scores):
         assert len(new_scores) == len(self.scores)
-
         mean = np.mean(list(new_scores.values()))
         std = np.std(list(new_scores.values()))
         for i, id in enumerate(self.ids):
@@ -52,8 +47,11 @@ class NetworksManager:
     def get_best_scoring_actor_id(self):
         return self.ids[np.argmax(self.scores)]
 
-    def train_critics(self, state_inputs, q_label, sess):
-        feed_dictionary = self._generate_feed_dictionary(state_inputs, q_label)
+    #TODO: update one hot to the network
+    def train_critics(self, state_inputs, q_label,one_hot_vector_bprop, sess):
+        #for network_id in self.ids:
+            #self.networks[network_id].one_hot_vector = one_hot_vector
+        feed_dictionary = self._generate_feed_dictionary(state_inputs, q_label,one_hot_vector_bprop)
         critic_summaries = [self.networks[network_id].critic_optimization_summaries for network_id in self.ids]
         critic_optimizations = [self.networks[network_id].optimize_critic for network_id in self.ids]
         all_steps = critic_summaries + critic_optimizations
@@ -62,9 +60,6 @@ class NetworksManager:
         return self._arrange_by_ids(summaries_results)
 
 
-
-
-    #CHECK WITH TOM (episode_runner)
     def predict_action(self, state_inputs, sess, use_online_network, ids=None):
         feed_dictionary = self._generate_feed_dictionary(state_inputs)
         if ids is None:
@@ -73,15 +68,11 @@ class NetworksManager:
 
         for network_id in ids:
             if use_online_network:
-            #if (self.runing_network == 1): #for double dqn
-                action_prediction.append(self.networks[network_id].online_q_value)
-
+                action_prediction.append(self.networks[network_id].online_q_value)#online_action
             else:
                 action_prediction.append(self.networks[network_id].target_q_value)
-
         action_results = sess.run(action_prediction, feed_dictionary)
         return self._arrange_by_ids(action_results, ids)
-
 
 
 
@@ -91,21 +82,16 @@ class NetworksManager:
         sess.run(critic_updates)
 
 
-    def _generate_feed_dictionary(self, state_inputs, scalar_inputs=None):
+
+    #TODO: important note: now we send the same one hot to all networks, check if we need a diffrent one for each net
+    def _generate_feed_dictionary(self, state_inputs, scalar_inputs=None, one_hot_vector = None):
         feed_dictionary = {self.state_inputs: state_inputs}#, self.one_hot_vector : one_hot_vector}
         if scalar_inputs is not None:
             for network_id in scalar_inputs:
                 feed_dictionary[self.networks[network_id].scalar_label] = scalar_inputs[network_id]
-        return feed_dictionary
+                feed_dictionary[self.networks[network_id].one_hot_vector] = one_hot_vector
 
-    #CHECK WITH TOM(ddpg_main)
-    def predict_policy_q(self, state_inputs, sess, use_online_network):
-        feed_dictionary = self._generate_feed_dictionary(state_inputs)
-        q_values = []
-        for network_id in self.ids:
-            if use_online_network:
-                q_values.append(self.networks[network_id].online_q_value)
-            else:
-                q_values.append(self.networks[network_id].target_q_value)
-        q_values_results = sess.run(q_values, feed_dictionary)
-        return self._arrange_by_ids(q_values_results)
+
+            #for network_id in self.ids:
+                #self.networks[network_id].one_hot_vector = one_hot_vector
+        return feed_dictionary

@@ -28,6 +28,9 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
     random.seed(random_seed)
     tf.compat.v1.set_random_seed
 
+
+
+
     # where we save all the outputs
     working_dir = os.getcwd()
     if is_in_collab:
@@ -64,68 +67,78 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
     def update_model(sess):
         batch_size = config['model']['batch_size']
         gamma = config['model']['gamma']
+        population = config['evolution']['population']
 
         #NOTE: we neet the check that approach and the diffrent batch for each network
         current_state, action, reward, terminated, next_state = replay_buffer.sample_batch(batch_size)
 
+        next_state_action_target_q = network_manager.predict_action(next_state, sess, use_online_network=False)
 
-        # get the predicted q value of the next state (action is taken from the target policy)
-        #network_manager.runing_network == 1 - network_manager.runing_network
-        next_state_action_target_q = network_manager.predict_policy_q(next_state, sess, use_online_network=False)
 
-        #calc actions from online net only for ddqn
-        #next_state_action_online_q = network_manager.predict_policy_q(next_state, sess, use_online_network=True)
-        #selected_actions=[]
-        #for i in range(batch_size):
-        #    selected_action = np.argmax(next_state_action_online_q[0][i])
-        #    selected_actions.append(selected_action)
+
+        #one hot vector
+        one_hot_vector = []
+        for i in range(batch_size):
+            one_step_hot= np.zeros(action_dimension)
+            one_step_hot[np.argmax(next_state_action_target_q[0][i])]=1
+            one_hot_vector.append(one_step_hot)
+
+
+        one_hot_vector_bprop = []
+        for i in range(batch_size):
+            one_step_hot= np.zeros(action_dimension)
+            one_step_hot[action[i]]=1
+            one_hot_vector_bprop.append(one_step_hot)
+
+        #TODO: run with oh vec 1 and understand the diff
+        #assert one_hot_vector_1 == one_hot_vector
+
+
+        #reward
+        reward_batch=[]
+        for i in range(batch_size):
+            d = np.zeros(action_dimension)
+            d[action[i]] = reward[i]
+            #d[0] = reward[i]
+            #d[1] = reward[i]
+            reward_batch =np.concatenate((reward_batch,d),axis=0)
+        reward_batch=np.reshape(reward_batch,( batch_size,-1))
+        
+
+        #terminated (end of game)
+        if (action_dimension == 2):
+            terminated = [terminated,terminated]
+        else:
+            terminated = [terminated, terminated,terminated, terminated]
+        terminated= np.transpose(terminated)
+        
+
 
         # compute critic label
         q_label = {}
 
-
-        #NOTE: in case we want to remove ddqn, just change the selected_actions below to action
-        one_hot_vector = []
-        for i in range(batch_size):
-            c= np.zeros(4)
-            c[action[i]]=1
-            one_hot_vector.append(c)
-
-        reward_batch=[]
-        for i in range(batch_size):
-            d = np.zeros(4)
-            d[action[i]] = reward[i]
-            reward_batch =np.concatenate((reward_batch,d),axis=0)
-        reward_batch=np.reshape(reward_batch,( batch_size,-1))
-        terminated = [terminated,terminated,terminated,terminated]
-        terminated= np.transpose(terminated)
-
-
-
         #Belman equation
-        for network_id in next_state_action_target_q:
+        for network_id in range(population):
             q_label[network_id] = \
                 np.expand_dims(np.array(reward_batch) +
                                np.multiply(
                                    np.multiply(1 - np.array(terminated), gamma),
                                    np.array(next_state_action_target_q[network_id])), 1)
 
-        for network_id in next_state_action_target_q:
-
+        for network_id in range(population):
             q_label[network_id] = np.multiply(np.squeeze(np.array(q_label[network_id])) , np.array(one_hot_vector))
 
 
-        # train critic given the targets
-        critic_optimization_summaries = network_manager.train_critics(current_state, q_label, sess)
 
+
+        #TODO: check if needed to send network id!!
+        # train critic given the targets
+        critic_optimization_summaries = network_manager.train_critics(current_state, q_label,one_hot_vector_bprop,sess)
 
         # update target networks
         network_manager.update_target_networks(sess)
         result = list(critic_optimization_summaries.values()) #+ list(actor_optimization_summaries.values())
         return result
-
-
-
 
     def compute_actor_score(episode_rewards, episode_lengths):
         return sum(episode_rewards)
@@ -153,10 +166,12 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
             for actor_id in actor_ids:
                 # run episode:
                 states, actions, rewards, done, rollout_time = episode_runner.run_episode(sess, actor_id, True)
+
                 if total_rollout_time is None:
                     total_rollout_time = rollout_time
                 else:
                     total_rollout_time += rollout_time
+
                 # at the end of episode
                 replay_buffer.add_episode(states, actions, rewards, done)
                 total_episodes += 1
@@ -164,7 +179,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
                 episode_rewards.append(sum(rewards))
                 episode_lengths.append(len(rewards))
 
-            print( 'rollout time took: {}'.format(total_rollout_time))# + 'last reward: {}'.format(rewards[-1]))
+            #print( 'rollout time took: {}'.format(total_rollout_time))# + 'last reward: {}'.format(rewards[-1]))
 
             # do updates
             if replay_buffer.size() > config['model']['batch_size']:

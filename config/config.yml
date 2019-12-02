@@ -1,13 +1,18 @@
+
+
 general:
   name:
 
-  #------change to discrit
-  #gym_continuous_env: 'LunarLander-v2'
-  gym_continuous_env: 'CartPole-v0'
 
-  action_dim: 4
-  random_seed: 123
-#  random_seed: 456
+  #gym_continuous_env: 'LunarLander-v2'
+  #action_dim: 4
+
+  gym_continuous_env: 'CartPole-v0'
+  action_dim: 2
+
+
+  #random_seed: 123
+  random_seed: 456
 #  random_seed: 789
   updates_cycle_count: 10000
   episodes_per_update: 16
@@ -21,23 +26,25 @@ general:
   actor_processes: 6
   write_train_summaries: 500
   save_model_every_cycles: 100
-  max_steps: 1000
-  #max_steps: 300
+  #max_steps: 1000
+  max_steps: 300
 
 model:
-  buffer_size: 1000000
-
+  buffer_size: 10000
   #batch_size: 128
-  batch_size: 512
-  gamma: 0.99
+  #batch_size: 512 #ll
+  batch_size: 32 #cp
+
+  #gamma: 0.99  #ll
+  gamma: 0.9 #cp
+
   random_action_probability: 0.2
   #for decay gidic epsilon
-  epsilon: 0.3
-  #epsilon: 0.8
-  epsilon_min: 0.25
-  #epsilon_decay: 0.9999
-  epsilon_decay: 1.
-  #random_noise_std: 0.05
+  epsilon: 0.8
+#  epsilon_min: 0.25 #ll
+  epsilon_min: 0.01 #cp
+  epsilon_decay: 0.995
+
 
 test:
   test_every_cycles: 50
@@ -50,4 +57,13 @@ evolution:
   softmax_temperature: 1.0
   use_default_configration: True  # to benchmark vs regular agent
 #  use_default_configration: False
+
+
+
+
+
+
+
+
+
 
