@@ -25,6 +25,7 @@ class NetworksManager:
         self.scores = [0.0 for _ in self.ids]
 
 
+
     def _arrange_by_ids(self, ordered_collection, ids=None):
         if ids is None:
             ids = self.ids
@@ -50,7 +51,7 @@ class NetworksManager:
     #TODO: update one hot to the network
     def train_critics(self, state_inputs, q_label,one_hot_vector_bprop, sess):
         #for network_id in self.ids:
-            #self.networks[network_id].one_hot_vector = one_hot_vector
+        #    self.networks[network_id].one_hot_vector = one_hot_vector_bprop
         feed_dictionary = self._generate_feed_dictionary(state_inputs, q_label,one_hot_vector_bprop)
         critic_summaries = [self.networks[network_id].critic_optimization_summaries for network_id in self.ids]
         critic_optimizations = [self.networks[network_id].optimize_critic for network_id in self.ids]
@@ -58,6 +59,8 @@ class NetworksManager:
         execution_result = sess.run(all_steps, feed_dictionary)
         summaries_results = execution_result[:self.config['evolution']['population']]
         return self._arrange_by_ids(summaries_results)
+
+
 
 
     def predict_action(self, state_inputs, sess, use_online_network, ids=None):
@@ -78,14 +81,12 @@ class NetworksManager:
 
     def update_target_networks(self, sess):
         critic_updates = [self.networks[network_id].update_critic_target_params for network_id in self.ids]
-        #actor_updates = [self.networks[network_id].update_actor_target_params for network_id in self.ids]
         sess.run(critic_updates)
 
-
-
     #TODO: important note: now we send the same one hot to all networks, check if we need a diffrent one for each net
-    def _generate_feed_dictionary(self, state_inputs, scalar_inputs=None, one_hot_vector = None):
+    def _generate_feed_dictionary(self, state_inputs, scalar_inputs=None,one_hot_vector = None):
         feed_dictionary = {self.state_inputs: state_inputs}#, self.one_hot_vector : one_hot_vector}
+
         if scalar_inputs is not None:
             for network_id in scalar_inputs:
                 feed_dictionary[self.networks[network_id].scalar_label] = scalar_inputs[network_id]

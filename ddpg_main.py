@@ -105,6 +105,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
         reward_batch=np.reshape(reward_batch,( batch_size,-1))
         
 
+        #TODO: make generic
         #terminated (end of game)
         if (action_dimension == 2):
             terminated = [terminated,terminated]
@@ -126,7 +127,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
                                    np.array(next_state_action_target_q[network_id])), 1)
 
         for network_id in range(population):
-            q_label[network_id] = np.multiply(np.squeeze(np.array(q_label[network_id])) , np.array(one_hot_vector))
+            q_label[network_id] = np.multiply(np.squeeze(np.array(q_label[network_id])), np.array(one_hot_vector))
 
 
 

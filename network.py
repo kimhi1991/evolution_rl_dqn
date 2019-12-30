@@ -1,22 +1,17 @@
 import os
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
-import  numpy as np
-
+#
 
 #TODO: initializing oh when create net
 class Network(object):
     def __init__(self, config, id, state_dimension, action_dimension, inputs):
-
-
-
         self.config = config
-
         self.id = id
         # input related data
         self.state_dimension = state_dimension
         self.action_dimension = action_dimension
-
+        #self.one_hot_vector = one_hot_vector
         self.state_inputs = inputs
         #self.action_inputs = global_inputs[1]
 
@@ -28,7 +23,6 @@ class Network(object):
             self.one_hot_vector = tf.compat.v1.placeholder(tf.float32, [None, self.action_dimension], name='one_hot_vector') #check if the name important
             variable_count = len(tf.compat.v1.trainable_variables())
             tau = self.config['agent']['tau']
-
 
             #online network 1
             self.online_q_value = self._create_critic_network(
@@ -66,8 +60,10 @@ class Network(object):
 
 
             critic_prediction_loss = tf.div(
-                tf.losses.mean_squared_error(self.scalar_label, q_val_one_hot), batch_size)
-                #tf.losses.mean_squared_error(self.scalar_label, self.online_q_value), batch_size)
+                #TODO: check why not with one hot??
+                #tf.losses.mean_squared_error(self.scalar_label, q_val_one_hot), batch_size)
+                tf.losses.mean_squared_error(self.scalar_label, self.online_q_value), batch_size)
+
             critic_regularization = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
             critic_regularization_loss = tf.div(tf.add_n(critic_regularization), batch_size) \
                 if len(critic_regularization) > 0 else 0.0
@@ -83,6 +79,9 @@ class Network(object):
             self.critic_optimization_summaries = tf.summary.merge([
                 tf.summary.scalar('critic_total_loss', self.critic_total_loss),
             ])
+
+
+            i=0
 
 
     def _create_critic_network(self, state_inputs, is_online, reuse_flag, add_regularization_loss):
