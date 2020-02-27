@@ -15,18 +15,12 @@ class PopulationManager:
 
     def _change_config(self, config_to_morph):
         config_to_morph['model']['tau'] = self._select_uniform_log_scale(0.005, 0.1)
-
         config_to_morph['actor']['learning_rate'] = self._select_uniform_log_scale(0.00001, 0.1)
-        config_to_morph['actor']['gradient_limit'] = self._select_uniform_log_scale(0.001, 1.0,
-                                                                                    zero_value_probability=0.1)
-        config_to_morph['actor']['tanh_preactivation_loss_coefficient'] = self._select_uniform_log_scale(
-            0.001, 10.0, zero_value_probability=0.1)
-
+        config_to_morph['actor']['gradient_limit'] = self._select_uniform_log_scale(0.001, 1.0, zero_value_probability=0.1)
+        config_to_morph['actor']['tanh_preactivation_loss_coefficient'] = self._select_uniform_log_scale(0.001, 10.0, zero_value_probability=0.1)
         config_to_morph['critic']['learning_rate'] = self._select_uniform_log_scale(0.00001, 0.1)
-        config_to_morph['critic']['gradient_limit'] = self._select_uniform_log_scale(0.001, 1.0,
-                                                                                     zero_value_probability=0.1)
-        config_to_morph['critic']['l2_regularization_coefficient'] = self._select_uniform_log_scale(
-            0.0000001, 0.001, zero_value_probability=0.1)
+        config_to_morph['critic']['gradient_limit'] = self._select_uniform_log_scale(0.001, 1.0, zero_value_probability=0.1)
+        config_to_morph['critic']['l2_regularization_coefficient'] = self._select_uniform_log_scale(0.0000001, 0.001, zero_value_probability=0.1)
         return config_to_morph
 
     @staticmethod

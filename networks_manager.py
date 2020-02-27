@@ -9,6 +9,7 @@ class NetworksManager:
         self.config = config
         self.state_dimension = state_dimension
         self.action_dimension = action_dimension
+        self.is_shared_buffer = self.config['evolution']['is_shared_buffer']
 
         self.population_manager = population_manager
 
@@ -43,12 +44,13 @@ class NetworksManager:
         logits = logits - np.max(logits)  # remove max for numerical stability
         prob = np.exp(logits)
         prob = prob / np.sum(prob)
+        if (self.is_shared_buffer == False):
+            return list(np.random.choice(self.ids, times_to_select, True, [1,0]))
         return list(np.random.choice(self.ids, times_to_select, True, prob))
 
     def get_best_scoring_actor_id(self):
         return self.ids[np.argmax(self.scores)]
 
-    #TODO: update one hot to the network
     def train_critics(self, state_inputs, q_label,one_hot_vector_bprop, sess):
         #for network_id in self.ids:
         #    self.networks[network_id].one_hot_vector = one_hot_vector_bprop

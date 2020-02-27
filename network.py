@@ -16,72 +16,78 @@ class Network(object):
         #self.action_inputs = global_inputs[1]
 
         with tf.compat.v1.variable_scope('network_{}'.format(id)):
-            self.scalar_label = tf.compat.v1.placeholder(tf.float32, [None, 1], name='scalar_input')
+            #check if need to change to state dimantion
+            self.scalar_label = tf.compat.v1.placeholder(tf.float32, [None, self.action_dimension], name='scalar_input')
             # since we take partial derivatives w.r.t subsets of the parameters, we always need to remember which
             # parameters are currently being added. note that this also causes the model to be non thread safe,
             # therefore the creation must happen sequentially
             self.one_hot_vector = tf.compat.v1.placeholder(tf.float32, [None, self.action_dimension], name='one_hot_vector') #check if the name important
+            self.scalar_label_one_hot_2dim= tf.multiply(self.scalar_label, self.one_hot_vector)
+            self.scalar_label_one_hot = tf.reduce_sum(self.scalar_label_one_hot_2dim, axis =1, keepdims=True)
+
+
             variable_count = len(tf.compat.v1.trainable_variables())
             tau = self.config['agent']['tau']
 
             #online network 1
             self.online_q_value = self._create_critic_network(
-                self.state_inputs, is_online=True, reuse_flag=False, add_regularization_loss=False
-            )
+                self.state_inputs, is_online=True, reuse_flag=False, add_regularization_loss=False)
+            self.online_q_oh_2dim = tf.multiply(self.online_q_value, self.one_hot_vector)
+            self.online_q_oh = tf.reduce_sum(self.online_q_oh_2dim, axis=1, keepdims=True)
 
-            online_critic_params = tf.trainable_variables()[variable_count:]
-            self.online_critic_params =online_critic_params
+            self.online_critic_params =tf.compat.v1.trainable_variables()[variable_count:]
             variable_count = len(tf.compat.v1.trainable_variables())
 
             # predicting the q value to avoid over astimating
             self.target_q_value = self._create_critic_network(
-                self.state_inputs, is_online=False, reuse_flag=False, add_regularization_loss=False
-            )
-
-            assert variable_count == len(tf.trainable_variables()[variable_count:])  # make sure no new parameters were added
+                self.state_inputs, is_online=False, reuse_flag=False, add_regularization_loss=False)
+            self.target_q_oh_2dim = tf.multiply(self.target_q_value, self.one_hot_vector)
+            self.target_q_oh = tf.reduce_sum(self.target_q_oh_2dim, axis=1, keepdims=True)
+            """""
+            FOR DEBUG:
+            #x = tf.trainable_variables()
+            #x_len = len(x)
+            #x_half = tf.trainable_variables()[variable_count:]
+            #x_half_len = len(x_half)
+            #online_len=len(self.online_q_value)
+            #target_len=len(self.target_q_value)
+            """
+            #TODO: debug with tom why the assrt doesn't work althugh the nets devided properly
+            #assert variable_count == len(tf.trainable_variables()[variable_count:])  # make sure no new parameters were added
             target_critic_params = tf.trainable_variables()[variable_count:]
 
             # periodically update target critic with online critic weights
             self.update_critic_target_params = [target_critic_params[i].assign(
-                    tf.multiply(online_critic_params[i], tau) + tf.multiply(target_critic_params[i], 1. - tau)
+                    tf.multiply(self.online_critic_params[i], tau) + tf.multiply(target_critic_params[i], 1. - tau)
                 ) for i in range(len(target_critic_params))]
 
 
             batch_size = tf.cast(tf.shape(self.state_inputs)[0], tf.float32)
 
-            # critic optimization
-            #we switched the online_q_value_fixed to not fixed
-            #TODO: dot oh vec (chosen by actions) -- tf.reduce_sum, tf.multiply
-
-            #q_val_one_hot = tf.matmul(self.online_q_value, self.one_hot_vector)
-            #q_val_one_hot = tf.reduce_sum(tf.multiply(self.online_q_value, self.one_hot_vector),1)
-            #q_val_one_hot=tf.expand_dims(q_val_one_hot, 1)
-            q_val_one_hot = tf.expand_dims(tf.reduce_sum(self.online_q_value* self.one_hot_vector,axis=1), axis=-1)
 
 
             critic_prediction_loss = tf.div(
-                #TODO: check why not with one hot??
-                #tf.losses.mean_squared_error(self.scalar_label, q_val_one_hot), batch_size)
-                tf.losses.mean_squared_error(self.scalar_label, self.online_q_value), batch_size)
+                tf.compat.v1.losses.mean_squared_error(self.scalar_label_one_hot, self.online_q_oh), batch_size)
+                #TODO: 6.1 make sure we don't need to calc the loss with target network (also ask tom about the loss without reduse sum)
+                #tf.losses.mean_squared_error(self.scalar_label_one_hot, self.target_q_oh), batch_size)
+                #tf.losses.mean_squared_error(self.scalar_label_one_hot_2dim, self.online_q_oh_2dim), batch_size)
 
-            critic_regularization = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+
+            critic_regularization = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.REGULARIZATION_LOSSES)
             critic_regularization_loss = tf.div(tf.add_n(critic_regularization), batch_size) \
                 if len(critic_regularization) > 0 else 0.0
             self.critic_total_loss = critic_prediction_loss + critic_regularization_loss
 
             self.critic_initial_gradients_norm, self.critic_clipped_gradients_norm, self.optimize_critic = \
                 self._optimize_by_loss(
-                    self.critic_total_loss, online_critic_params, self.config['critic']['learning_rate'],
+                    self.critic_total_loss, self.online_critic_params, self.config['critic']['learning_rate'],
                     self.config['critic']['gradient_limit']
                 )
 
             # summaries for the critic optimization
-            self.critic_optimization_summaries = tf.summary.merge([
-                tf.summary.scalar('critic_total_loss', self.critic_total_loss),
+            self.critic_optimization_summaries = tf.compat.v1.summary.merge([
+                tf.compat.v1.summary.scalar('critic_total_loss', self.critic_total_loss),
             ])
-
-
-            i=0
 
 
     def _create_critic_network(self, state_inputs, is_online, reuse_flag, add_regularization_loss):
@@ -124,7 +130,7 @@ class Network(object):
 
     @staticmethod
     def _optimize_by_loss(loss, parameters_to_optimize, learning_rate, gradient_limit):
-        optimizer = tf.train.AdamOptimizer(learning_rate)
+        optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate)
         gradients, variables = zip(*optimizer.compute_gradients(loss, parameters_to_optimize))
         initial_gradients_norm = tf.global_norm(gradients)
         if gradient_limit > 0.0:

@@ -56,7 +56,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
     # save model
     saver = tf.train.Saver(max_to_keep=4, save_relative_paths=saver_dir)
     yaml.dump(config, open(config_copy_path, 'w'))
-    summaries_collector = SummariesCollector(summaries_dir, model_name)
+    summaries_collector = SummariesCollector(summaries_dir, model_name, config)
     episode_runner = EpisodeRunner(config, env_generator.get_env_wrapper().get_env(), network_manager)
     visualization_episode_runner = EpisodeRunner(
         config, env_generator.get_env_wrapper().get_env(), network_manager, is_in_collab=is_in_collab)
@@ -75,7 +75,6 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
         next_state_action_target_q = network_manager.predict_action(next_state, sess, use_online_network=False)
 
 
-
         #one hot vector
         one_hot_vector = []
         for i in range(batch_size):
@@ -90,8 +89,6 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
             one_step_hot[action[i]]=1
             one_hot_vector_bprop.append(one_step_hot)
 
-        #TODO: run with oh vec 1 and understand the diff
-        #assert one_hot_vector_1 == one_hot_vector
 
 
         #reward
@@ -99,18 +96,22 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
         for i in range(batch_size):
             d = np.zeros(action_dimension)
             d[action[i]] = reward[i]
-            #d[0] = reward[i]
-            #d[1] = reward[i]
             reward_batch =np.concatenate((reward_batch,d),axis=0)
+
         reward_batch=np.reshape(reward_batch,( batch_size,-1))
-        
+
+
+
 
         #TODO: make generic
         #terminated (end of game)
         if (action_dimension == 2):
             terminated = [terminated,terminated]
         else:
-            terminated = [terminated, terminated,terminated, terminated]
+            if ((action_dimension == 3)):
+                terminated = [terminated, terminated,terminated]
+            else:
+                terminated = [terminated, terminated,terminated, terminated]
         terminated= np.transpose(terminated)
         
 
@@ -118,22 +119,21 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
         # compute critic label
         q_label = {}
 
+        #just gamma * not end of game
+        gamma_term= np.multiply(1 - np.array(terminated), gamma)
+
         #Belman equation
         for network_id in range(population):
             q_label[network_id] = \
                 np.expand_dims(np.array(reward_batch) +
-                               np.multiply(
-                                   np.multiply(1 - np.array(terminated), gamma),
-                                   np.array(next_state_action_target_q[network_id])), 1)
+                               np.multiply(gamma_term, np.array(next_state_action_target_q[network_id])), 1)
 
         for network_id in range(population):
             q_label[network_id] = np.multiply(np.squeeze(np.array(q_label[network_id])), np.array(one_hot_vector))
+            #q_label[network_id] = np.sum(q_label[network_id],axis=1)
 
 
-
-
-        #TODO: check if needed to send network id!!
-        # train critic given the targets
+        #TODO: send network id (very important for the rest of the project)
         critic_optimization_summaries = network_manager.train_critics(current_state, q_label,one_hot_vector_bprop,sess)
 
         # update target networks
@@ -153,11 +153,11 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
             )
     ) as sess:
         sess.run(tf.global_variables_initializer())
-        # CHECK IF NEEDED-- UPDATE TARGET NET TWICE
+        # CHECK IF NEEDED-- UPDATE TARGET NET TWICE (check with tom old code and ask him)
         #network_manager.update_target_networks(sess)
 
         global_step = 0
-        total_episodes = 0
+        #total_episodes = 0
         for update_index in range(config['general']['updates_cycle_count']):
 
             episode_rewards, episode_lengths = [], []
@@ -175,7 +175,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
 
                 # at the end of episode
                 replay_buffer.add_episode(states, actions, rewards, done)
-                total_episodes += 1
+                #total_episodes += 1
 
                 episode_rewards.append(sum(rewards))
                 episode_lengths.append(len(rewards))
@@ -189,8 +189,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
                     summaries = update_model(sess)
                     if global_step % config['general']['write_train_summaries'] == 0:
                         summaries_collector.write_train_episode_summaries(
-                            sess, global_step, episode_rewards, episode_lengths
-                        )
+                            sess, global_step, episode_rewards, episode_lengths,actor_id)
                         summaries_collector.write_train_optimization_summaries(summaries, global_step)
                     global_step += 1
                 b = datetime.datetime.now()
@@ -199,14 +198,14 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
             # test if needed
             if update_index % config['test']['test_every_cycles'] == 0:
                 # run test
-                number_of_episodes_per_actor = config['test']['number_of_episodes_per_actor']
+                number_of_episodes_per_actor = config['test']['number_of_episodes_per_actor'] #**************************for population
                 actor_scores = {}
                 actor_stats = {}
                 for actor_id in network_manager.ids:
                     episode_rewards, episode_lengths = [], []
                     for i in range(number_of_episodes_per_actor):
-                        cond =int( i / number_of_episodes_per_actor - 1)
-                        states, actions, rewards, done, rollout_time = episode_runner.run_episode(sess, actor_id, False, cond)
+                        #cond =int( i / number_of_episodes_per_actor - 1)
+                        states, actions, rewards, done, rollout_time = episode_runner.run_episode(sess, actor_id, False)
                         # at the end of episode
                         episode_rewards.append(sum(rewards))
                         episode_lengths.append(len(rewards))
@@ -217,7 +216,9 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
                 # get the statistics of the best actor:
                 best_actor_id = network_manager.get_best_scoring_actor_id()
                 episode_rewards, episode_lengths = actor_stats[best_actor_id]
-                summaries_collector.write_test_episode_summaries(sess, global_step, episode_rewards, episode_lengths)
+                #if (np.argmax(episode_rewards) > 10):
+                #    print ("agent won!!")
+                summaries_collector.write_test_episode_summaries(sess, global_step, episode_rewards, episode_lengths,best_actor_id)
                 # run visualization with the best actor
                 #--------------need to change when we have population----------------------
                 visualization_episode_runner.run_episode(sess, best_actor_id, False, render=config['test']['show_best'])
@@ -243,4 +244,7 @@ if __name__ == '__main__':
         print('------------ agent ------------')
         print(yaml.dump(config))
 
-    run_for_config(config, agent_config, EnvGenerator(config['general']['gym_continuous_env']))
+    run_for_config(config, agent_config, EnvGenerator(config['general']['gym_env']))
+    #what i really wanna do:
+    #run_for_config(config, agent_config, 'mountain_car_ok.py')
+

@@ -5,6 +5,7 @@ import datetime
 from random import randrange
 import os
 import yaml
+from envs import EnvGenerator
 
 with open(os.path.join(os.getcwd(), 'config/config.yml'), 'r') as yml_file:
     config = yaml.load(yml_file)
@@ -16,6 +17,8 @@ class EpisodeRunner:
         self.gym_env = gym_env
         self.networks_manager = networks_manager
         self.epsilon = self.config['model']['epsilon']
+        self.state_dimension, self.action_dimension = EnvGenerator(config['general']['gym_env']).get_env_definitions()
+
         #self.time =0
         self.is_in_collab = is_in_collab
         if self.is_in_collab:
@@ -64,7 +67,7 @@ class EpisodeRunner:
 
             prob_exploration = np.random.binomial(1, self.epsilon, 1)[0]
             if (self.epsilon  > 0. and np.random.uniform()< self.epsilon and is_train == True):
-                chosen_action = np.random.choice(config['general']['action_dim'])
+                chosen_action = np.random.choice(self.action_dimension)
             else:
                 chosen_action = np.argmax(predicted_actions)
 

@@ -4,16 +4,20 @@ general:
   name:
 
 
-  #gym_continuous_env: 'LunarLander-v2'
-  #action_dim: 4
+  gym_env: 'CartPole-v0'
+  completion_reward: 195
 
-  gym_continuous_env: 'CartPole-v0'
-  action_dim: 2
+  #gym_env: 'Acrobot-v1'
+  #completion_reward: 195
+
+  #gym_env: 'MountainCar-v0'
+  #completion_reward: 195
+
+  #gym_env: 'LunarLander-v2'
+  #completion_reward: 195
 
 
-  #random_seed: 123
-  random_seed: 456
-#  random_seed: 789
+  random_seed: 123
   updates_cycle_count: 10000
   episodes_per_update: 16
   model_updates_per_cycle: 40
@@ -24,37 +28,38 @@ general:
   actor_gpu_usage: 0.1
 #  actor_processes: 2
   actor_processes: 6
-  write_train_summaries: 500
+  write_train_summaries: 1000
   save_model_every_cycles: 100
-  #max_steps: 1000
-  max_steps: 300
+  #max_steps: 1000 #ll
+  #max_steps: 400 #ab
+  max_steps: 400 #cp
 
 model:
   buffer_size: 10000
   #batch_size: 128
   #batch_size: 512 #ll
   batch_size: 32 #cp
-
   #gamma: 0.99  #ll
   gamma: 0.9 #cp
 
-  random_action_probability: 0.2
-  #for decay gidic epsilon
-  epsilon: 0.8
-#  epsilon_min: 0.25 #ll
-  epsilon_min: 0.01 #cp
-  epsilon_decay: 0.995
+  epsilon: 0.9
+  epsilon_min: 0.25 #ll cp
+  #epsilon_min: 0.01 #ab
+  #epsilon_decay: 0.9995
+  epsilon_decay: 0.995 #ab
 
 
 test:
   test_every_cycles: 50
   number_of_episodes_per_actor: 50
-#  show_best: True
-  show_best: False
+  show_best: True
+  #show_best: False
 
 evolution:
-  population: 1
+  population: 2
   softmax_temperature: 1.0
+  is_shared_buffer: False
+  #is_shared_buffer: True
   use_default_configration: True  # to benchmark vs regular agent
 #  use_default_configration: False
 
