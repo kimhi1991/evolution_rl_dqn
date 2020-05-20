@@ -44,7 +44,7 @@ class NetworksManager:
         logits = logits - np.max(logits)  # remove max for numerical stability
         prob = np.exp(logits)
         prob = prob / np.sum(prob)
-        if (self.is_shared_buffer == False):
+        if (self.is_shared_buffer == False): #TODO:check that true
             return list(np.random.choice(self.ids, times_to_select, True, [1,0]))
         return list(np.random.choice(self.ids, times_to_select, True, prob))
 
@@ -64,7 +64,7 @@ class NetworksManager:
 
 
 
-
+    #predicted q values
     def predict_action(self, state_inputs, sess, use_online_network, ids=None):
         feed_dictionary = self._generate_feed_dictionary(state_inputs)
         if ids is None:

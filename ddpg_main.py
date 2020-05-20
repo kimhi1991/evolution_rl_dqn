@@ -30,7 +30,6 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
 
 
 
-
     # where we save all the outputs
     working_dir = os.getcwd()
     if is_in_collab:
@@ -103,9 +102,16 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
 
 
 
-        #TODO: make generic
         #terminated (end of game)
-        if (action_dimension == 2):
+        term = []
+        for i in range(action_dimension):
+            term.append(terminated)
+        terminated = np.transpose(term)
+
+
+        """
+        # OMER AND MOSHE - WE WERE IDIOTS!
+        if (action_dimension== 2):
             terminated = [terminated,terminated]
         else:
             if ((action_dimension == 3)):
@@ -113,7 +119,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
             else:
                 terminated = [terminated, terminated,terminated, terminated]
         terminated= np.transpose(terminated)
-        
+        """
 
 
         # compute critic label
@@ -122,7 +128,11 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
         #just gamma * not end of game
         gamma_term= np.multiply(1 - np.array(terminated), gamma)
 
-        #Belman equation
+        #Bellman
+
+
+
+
         for network_id in range(population):
             q_label[network_id] = \
                 np.expand_dims(np.array(reward_batch) +
@@ -132,8 +142,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
             q_label[network_id] = np.multiply(np.squeeze(np.array(q_label[network_id])), np.array(one_hot_vector))
             #q_label[network_id] = np.sum(q_label[network_id],axis=1)
 
-
-        #TODO: send network id (very important for the rest of the project)
+        #TODO: send network id
         critic_optimization_summaries = network_manager.train_critics(current_state, q_label,one_hot_vector_bprop,sess)
 
         # update target networks
@@ -157,9 +166,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
         #network_manager.update_target_networks(sess)
 
         global_step = 0
-        #total_episodes = 0
         for update_index in range(config['general']['updates_cycle_count']):
-
             episode_rewards, episode_lengths = [], []
             episodes_per_update = config['general']['episodes_per_update']
             actor_ids = network_manager.softmax_select_ids(episodes_per_update)
@@ -167,24 +174,17 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
             for actor_id in actor_ids:
                 # run episode:
                 states, actions, rewards, done, rollout_time = episode_runner.run_episode(sess, actor_id, True)
-
                 if total_rollout_time is None:
                     total_rollout_time = rollout_time
                 else:
                     total_rollout_time += rollout_time
-
                 # at the end of episode
                 replay_buffer.add_episode(states, actions, rewards, done)
-                #total_episodes += 1
-
                 episode_rewards.append(sum(rewards))
                 episode_lengths.append(len(rewards))
 
-            #print( 'rollout time took: {}'.format(total_rollout_time))# + 'last reward: {}'.format(rewards[-1]))
-
             # do updates
             if replay_buffer.size() > config['model']['batch_size']:
-                a = datetime.datetime.now()
                 for _ in range(config['general']['model_updates_per_cycle']):
                     summaries = update_model(sess)
                     if global_step % config['general']['write_train_summaries'] == 0:
@@ -192,19 +192,16 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
                             sess, global_step, episode_rewards, episode_lengths,actor_id)
                         summaries_collector.write_train_optimization_summaries(summaries, global_step)
                     global_step += 1
-                b = datetime.datetime.now()
-                #print 'update took: {}'.format(b - a)
 
             # test if needed
             if update_index % config['test']['test_every_cycles'] == 0:
                 # run test
-                number_of_episodes_per_actor = config['test']['number_of_episodes_per_actor'] #**************************for population
+                number_of_episodes_per_actor = config['test']['number_of_episodes_per_actor']
                 actor_scores = {}
                 actor_stats = {}
                 for actor_id in network_manager.ids:
                     episode_rewards, episode_lengths = [], []
                     for i in range(number_of_episodes_per_actor):
-                        #cond =int( i / number_of_episodes_per_actor - 1)
                         states, actions, rewards, done, rollout_time = episode_runner.run_episode(sess, actor_id, False)
                         # at the end of episode
                         episode_rewards.append(sum(rewards))
@@ -220,7 +217,6 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
                 #    print ("agent won!!")
                 summaries_collector.write_test_episode_summaries(sess, global_step, episode_rewards, episode_lengths,best_actor_id)
                 # run visualization with the best actor
-                #--------------need to change when we have population----------------------
                 visualization_episode_runner.run_episode(sess, best_actor_id, False, render=config['test']['show_best'])
 
             if update_index % config['general']['save_model_every_cycles'] == 0:
@@ -229,8 +225,6 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
 
 
 if __name__ == '__main__':
-    # disable tf warning
-    # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
     # read the config
     with open(os.path.join(os.getcwd(), 'config/config.yml'), 'r') as yml_file:
@@ -244,7 +238,7 @@ if __name__ == '__main__':
         print('------------ agent ------------')
         print(yaml.dump(config))
 
+
     run_for_config(config, agent_config, EnvGenerator(config['general']['gym_env']))
-    #what i really wanna do:
-    #run_for_config(config, agent_config, 'mountain_car_ok.py')
+
 

@@ -43,15 +43,6 @@ class Network(object):
                 self.state_inputs, is_online=False, reuse_flag=False, add_regularization_loss=False)
             self.target_q_oh_2dim = tf.multiply(self.target_q_value, self.one_hot_vector)
             self.target_q_oh = tf.reduce_sum(self.target_q_oh_2dim, axis=1, keepdims=True)
-            """""
-            FOR DEBUG:
-            #x = tf.trainable_variables()
-            #x_len = len(x)
-            #x_half = tf.trainable_variables()[variable_count:]
-            #x_half_len = len(x_half)
-            #online_len=len(self.online_q_value)
-            #target_len=len(self.target_q_value)
-            """
             #TODO: debug with tom why the assrt doesn't work althugh the nets devided properly
             #assert variable_count == len(tf.trainable_variables()[variable_count:])  # make sure no new parameters were added
             target_critic_params = tf.trainable_variables()[variable_count:]
@@ -93,7 +84,6 @@ class Network(object):
     def _create_critic_network(self, state_inputs, is_online, reuse_flag, add_regularization_loss):
         name_prefix = '{}_critic_{}'.format(os.getpid(), 'online' if is_online else 'target')
         layers_before_action = self.config['critic']['layers_before_action']
-        #layers_after_action = self.config['critic']['layers_after_action']
         activation = self._get_activation(self.config['critic']['activation'])
 
         current = state_inputs

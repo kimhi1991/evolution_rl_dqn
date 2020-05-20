@@ -1,4 +1,0 @@
-model_checkpoint_path: "all_graph-8000"
-all_model_checkpoint_paths: "all_graph-0"
-all_model_checkpoint_paths: "all_graph-4000"
-all_model_checkpoint_paths: "all_graph-8000"

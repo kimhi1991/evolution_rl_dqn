@@ -2,10 +2,10 @@ import time
 
 import numpy as np
 import datetime
-from random import randrange
 import os
 import yaml
 from envs import EnvGenerator
+
 
 with open(os.path.join(os.getcwd(), 'config/config.yml'), 'r') as yml_file:
     config = yaml.load(yml_file)
@@ -41,6 +41,9 @@ class EpisodeRunner:
                 self.gym_env.render()
                 time.sleep(0.01)
 
+
+
+
     def run_episode(self, sess, actor_id, is_train, render=False):
         # the trajectory data structures to return
         states = [self.gym_env.reset()]
@@ -65,7 +68,6 @@ class EpisodeRunner:
             predicted_actions = self.networks_manager.predict_action(
                [states[-1]], sess, use_online_network=True, ids=[actor_id])[actor_id]
 
-            prob_exploration = np.random.binomial(1, self.epsilon, 1)[0]
             if (self.epsilon  > 0. and np.random.uniform()< self.epsilon and is_train == True):
                 chosen_action = np.random.choice(self.action_dimension)
             else:
