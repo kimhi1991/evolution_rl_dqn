@@ -33,7 +33,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
     # where we save all the outputs
     working_dir = os.getcwd()
     if is_in_collab:
-        working_dir = '/' + os.path.join('content', 'gdrive', 'My Drive', 'colab_data', 'EvoDDPG')
+        working_dir = '/' + os.path.join('content', 'gdrive', 'My Drive', 'colab_data', 'dqn_evo')
     saver_dir = os.path.join(working_dir, 'models', model_name)
     if not os.path.exists(saver_dir):
         os.makedirs(saver_dir)
@@ -68,27 +68,24 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
         gamma = config['model']['gamma']
         population = config['evolution']['population']
 
-        #NOTE: we neet the check that approach and the diffrent batch for each network
+        #sample a batch from replay buffer
         current_state, action, reward, terminated, next_state = replay_buffer.sample_batch(batch_size)
-
+        #get predicted q values (shape of action dimantion)
         next_state_action_target_q = network_manager.predict_action(next_state, sess, use_online_network=False)
 
+        #now we use bellman eq to update the network:
 
-        #one hot vector
+        #one hot vector - TODO: create at once, no for
         one_hot_vector = []
+        one_hot_vector_bprop = []
         for i in range(batch_size):
             one_step_hot= np.zeros(action_dimension)
             one_step_hot[np.argmax(next_state_action_target_q[0][i])]=1
             one_hot_vector.append(one_step_hot)
 
-
-        one_hot_vector_bprop = []
-        for i in range(batch_size):
-            one_step_hot= np.zeros(action_dimension)
-            one_step_hot[action[i]]=1
-            one_hot_vector_bprop.append(one_step_hot)
-
-
+            one_step_hot_bprop = np.zeros(action_dimension)
+            one_step_hot_bprop[action[i]] = 1
+            one_hot_vector_bprop.append(one_step_hot_bprop)
 
         #reward
         reward_batch=[]
@@ -100,27 +97,11 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
         reward_batch=np.reshape(reward_batch,( batch_size,-1))
 
 
-
-
-        #terminated (end of game)
+        #terminated (end of game) todo:write like a normal person
         term = []
         for i in range(action_dimension):
             term.append(terminated)
         terminated = np.transpose(term)
-
-
-        """
-        # OMER AND MOSHE - WE WERE IDIOTS!
-        if (action_dimension== 2):
-            terminated = [terminated,terminated]
-        else:
-            if ((action_dimension == 3)):
-                terminated = [terminated, terminated,terminated]
-            else:
-                terminated = [terminated, terminated,terminated, terminated]
-        terminated= np.transpose(terminated)
-        """
-
 
         # compute critic label
         q_label = {}
@@ -129,10 +110,6 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
         gamma_term= np.multiply(1 - np.array(terminated), gamma)
 
         #Bellman
-
-
-
-
         for network_id in range(population):
             q_label[network_id] = \
                 np.expand_dims(np.array(reward_batch) +
@@ -142,7 +119,6 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
             q_label[network_id] = np.multiply(np.squeeze(np.array(q_label[network_id])), np.array(one_hot_vector))
             #q_label[network_id] = np.sum(q_label[network_id],axis=1)
 
-        #TODO: send network id
         critic_optimization_summaries = network_manager.train_critics(current_state, q_label,one_hot_vector_bprop,sess)
 
         # update target networks
@@ -150,7 +126,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
         result = list(critic_optimization_summaries.values()) #+ list(actor_optimization_summaries.values())
         return result
 
-    def compute_actor_score(episode_rewards, episode_lengths):
+    def compute_actor_score(episode_rewards):
         return sum(episode_rewards)
 
 
@@ -206,7 +182,7 @@ def run_for_config(config, agent_config, env_generator, is_in_collab=False):
                         # at the end of episode
                         episode_rewards.append(sum(rewards))
                         episode_lengths.append(len(rewards))
-                    actor_scores[actor_id] = compute_actor_score(episode_rewards, episode_lengths)
+                    actor_scores[actor_id] = compute_actor_score(episode_rewards)
                     actor_stats[actor_id] = (episode_rewards, episode_lengths)
                 # update the scores
                 network_manager.set_scores(actor_scores)
